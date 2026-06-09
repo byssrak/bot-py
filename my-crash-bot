@@ -1,0 +1,110 @@
+import telebot
+
+# توکن خودت را از BotFather بگیر و اینجا بگذار
+BOT_TOKEN = '8829853733:AAGY37y5j9uZ4Sre6FW-0peI103Ojjeg4JU'
+bot = telebot.TeleBot(BOT_TOKEN)
+
+# حافظه ربات برای ذخیره آخرین ضریب هر کاربر
+user_memory = {}
+
+print("ربات هوشمند زنجیره‌ای با حافظه زنده فعال شد...")
+
+@bot.message_handler(commands=['start', 'reset'])
+def send_welcome(message):
+    user_memory[message.chat.id] = None
+    bot.reply_to(message, "🔄 **حافظه ربات ریست شد!**\n\n🎯 رفیق برای شروع بازی، **دو ضریب آخر** مانیتور را با یک فاصله بفرست (مثال: `1.28 4.39`).\n\n📥 بعد از آن، برای دست‌های بعدی فقط و فقط **آخرین ضریب جدید** را بفرست تا زنجیره ادامه پیدا کند.")
+
+@bot.message_handler(func=lambda message: True)
+def process_live_sequence(message):
+    try:
+        chat_id = message.chat.id
+        text = message.text.strip().split()
+        
+        # سناریو اول: کاربر بار اول است یا دو عدد فرستاده است
+        if len(text) == 2:
+            coef1 = float(text[0]) # دست اول (قدیمی‌تر)
+            coef2 = float(text[1]) # دست دوم (جدیدتر)
+            # ذخیره آخرین ضریب در حافظه کاربر برای دست بعدی
+            user_memory[chat_id] = coef2
+            
+        # سناریو دوم: زنجیره شروع شده و کاربر فقط ۱ ضریب جدید فرستاده
+        elif len(text) == 1:
+            if chat_id not in user_memory or user_memory[chat_id] is None:
+                bot.reply_to(message, "❌ رفیق! برای بار اول باید دو ضریب را با فاصله بفرستی تا زنجیره شکل بگیرد. مثل: `1.28 4.39`")
+                return
+            
+            coef1 = user_memory[chat_id] # دست اول همان ضریب قبلی حافظه می‌شود
+            coef2 = float(text[0])       # دست دوم ضریب جدیدی است که الان فرستادی
+            # به‌روزرسانی حافظه با ضریب جدید
+            user_memory[chat_id] = coef2
+            
+        else:
+            bot.reply_to(message, "❌ فرمت اشتباه است! یا دو ضریب با فاصله (برای شروع) یا یک ضریب (برای ادامه زنجیره) بفرست.")
+            return
+
+        # 🛡️ کالبدشکافی بادی‌پاردها بر اساس زنجیره دو ضریب اخیر 🛡️
+        
+        # قانون صفر
+        if coef1 in [0.00, 1.00] or coef2 in [0.00, 1.00]:
+            response = f"🛑 **تحلیل زنجیره (قبلی: {coef1} | جدید: {coef2})**\n\n⚠️ **دستور دست بعدی: تماشای مطلق!**\nیکی از ضرایب روی صفر یا یک قفل شده. الگوریتم خطرناک است!"
+            bot.reply_to(message, response, parse_mode='Markdown')
+            return
+            
+        # دماسنج روی آخرین ضریب بازار
+        if coef2 < 1.20:
+            response = f"🔴 **تحلیل زنجیره (قبلی: {coef1} | جدید: {coef2})**\n\n⚠️ **دستور دست بعدی: تماشای مطلق (ورود ممنوع)!**\nبازار سرد و ریزشی است."
+            bot.reply_to(message, response, parse_mode='Markdown')
+            return
+            
+        # مار نجومی روی آخرین ضریب
+        if coef2 >= 20.00:
+            response = f"🐉 **تحلیل زنجیره (قبلی: {coef1} | جدید: {coef2})**\n\n⚠️ **دستور دست بعدی: تماشای مطلق (اصلاح مار)!**\nسرور بعد از ضریب نجومی استراحت می‌دهد."
+            bot.reply_to(message, response, parse_mode='Markdown')
+            return
+
+        # تله مرزی و زون رند روی آخرین ضریب
+        coef2_str = str(coef2)
+        coef2_str_parts = coef2_str.split('.')
+        A2 = int(coef2_str_parts[0])
+        BC2 = int(coef2_str_parts[1]) if len(coef2_str_parts) > 1 else 0
+        
+        if A2 == 1 and (50 <= BC2 <= 60):
+            response = f"🛡️ **دستور دست بعدی: تماشا (تله مرزی {coef2})**\n\n⚠️ ضریب بیخ گوش هدف سوخته است."
+            bot.reply_to(message, response, parse_mode='Markdown')
+            return
+            
+        if len(coef2_str_parts) > 1 and len(coef2_str_parts[1]) >= 2 and coef2_str_parts[1][1] == '0':
+            response = f"🛡️ **دستور دست بعدی: تماشا (زون رند {coef2})**\n\n⚠️ خطر دستکاری روی اعداد رند."
+            bot.reply_to(message, response, parse_mode='Markdown')
+            return
+
+        # 📊 محاسبات فرمول اصلی روی ضریب جدید (دست دوم) برای پیش‌بینی دست سوم 📊
+        if BC2 < 10 and len(coef2_str_parts[1]) == 1:
+            BC2 = BC2 * 10
+            
+        B2 = BC2 // 10
+        C2 = BC2 % 10
+        
+        X = (A2 + BC2) + abs(B2 - C2)
+        
+        # تعیین خروجی چراغ
+        if X > 30:
+            if 30 <= X <= 40:
+                Z = B2 * C2
+                if Z >= 5:
+                    status = f"🟢 **دست بعدی: چراغ سبز مجاز**\n\n📊 آنالیز ضریب {coef2}:\nعدد نهایی: {X} | شتاب: {Z}\n🛒 **دستور: با پله بعدی وارد شو (خروج روی 1.50)**"
+                else:
+                    status = f"🔴 **دست بعدی: فرمول قرمز (شتاب ضعیف)**\n\n📊 آنالیز ضریب {coef2}:\nعدد نهایی: {X} | شتاب زیر 5 است.\n🛑 **دستور: تماشای مطلق!**"
+            else:
+                status = f"🟢 **دست بعدی: چراغ سبز قطعی و صریح**\n\n📊 آنالیز ضریب {coef2}:\nعدد نهایی {X} بالای 40 است.\n🛒 **دستور: با پله بعدی با قدرت وارد شو (خروج روی 1.50)**"
+        else:
+            status = f"🔴 **دست بعدی: فرمول قرمز (زیر 30)**\n\n📊 آنالیز ضریب {coef2}:\nعدد نهایی: {X}\n🛑 **دستور: تماشای مطلق و عدم ورود!**"
+            
+        bot.reply_to(message, status, parse_mode='Markdown')
+
+    except ValueError:
+        bot.reply_to(message, "❌ لطفاً عدد معتبر وارد کنید.")
+    except Exception as e:
+        bot.reply_to(message, "❌ خطایی رخ داد.")
+
+bot.polling(none_stop=True)
